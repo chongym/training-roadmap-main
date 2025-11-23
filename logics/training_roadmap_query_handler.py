@@ -5,25 +5,7 @@ import pandas as pd
 from helper_functions import llm
 
 
-category_n_course_name = {'Programming and Development': ['Web Development Bootcamp',
-                                                          'Introduction to Cloud Computing',
-                                                          'Advanced Web Development',
-                                                          'Cloud Architecture Design'],
-                          'Data Science & AI': ['Data Science with Python',
-                                                'AI and Machine Learning for Beginners',
-                                                'Machine Learning with R',
-                                                'Deep Learning with TensorFlow'],
-                          'Marketing': ['Digital Marketing Masterclass',
-                                        'Social Media Marketing Strategy'],
-                          'Cybersecurity': ['Cybersecurity Fundamentals',
-                                            'Ethical Hacking for Beginners'],
-                          'Business and Management': ['Project Management Professional (PMP)Â® Certification Prep',
-                                                      'Agile Project Management'],
-                          'Writing and Literature': ['Creative Writing Workshop',
-                                                     'Advanced Creative Writing'],
-                          'Design': ['Graphic Design Essentials', 'UI/UX Design Fundamentals']}
-
-# Load the JSON file
+# Load the Excel file
 filepath = './data/jobsandskills-skillsfuture-skills-framework-dataset.xlsx'
 sheetname = 'Job Role_TCS_CCS'
 desired_cols = ['Job Role', 'TSC_CCS Title']
@@ -33,22 +15,57 @@ df_job_role_skills = pd.read_excel(xls, sheetname, usecols=desired_cols)
 
 print(df_job_role_skills.head())
 
-def identify_jobrole_and_skills(user_message):
-    filtered_df = df_job_role_skills[df_job_role_skills['Job Role'].str.contains(user_message, case=False)]
+def get_skills_for_jobrole(jobrole):
+    filtered_df = df_job_role_skills[df_job_role_skills['Job Role'].str.contains(jobrole, case=False)]
     print(filtered_df.head())
     filtered_df
     return filtered_df
 
+def identify_skillgaps_for_jobrole(resume, interest, jobrole):
+    df_job_role_skills = get_skills_for_jobrole(jobrole)
+        
+    delimiter = "####"
 
-def generate_learning_roadmap(jobrole, skills):
+    system_message = f"""
+    Follow these steps to answer the learner's queries.
+    The learner's query will be delimited with a pair {delimiter}.
+
+    Step 1: {delimiter} You will identify the skills needed for the job role, {jobrole}, 
+    interest and career aspiration {interest} the learner wants to be trained in.
+    Understand the relevant skills for the job role from the following list.
+    All available skills shown in the data frame  below:
+    {df_job_role_skills}
+    
+    Step 2:{delimiter} Use the information about the skills needed to 
+    identify the skill gap based on the resume {resume} provided by the learner.
+    You must only rely on the facts or information in the skill information.
+    Your response should be as detail as possible and 
+    include information that is useful for learn to better understand the skills he or she lacks.
+    
+    Provide skill gaps for the learner.
+    Ensure your response contains is in table format.
+    """
+
+    messages =  [
+        {'role':'system',
+         'content': system_message},
+        {'role':'user',
+         'content': f"{delimiter}{jobrole},{interest}{delimiter}"},
+    ]
+
+    skillgap_response_str = llm.get_completion_by_messages(messages)
+    skillgap_response_str = skillgap_response_str.replace("'", "\"")
+   
+    return skillgap_response_str
+
+
+def generate_learning_roadmap(interest, jobrole, skills):
     delimiter = "####"
 
     system_message = f"""
     You will be provided with learning roadmap. \
-    The learner's job role is {jobrole} and the needed skills are {skills} {delimiter}.
-
+    The learner wants to be trained in {jobrole} and the needed skills are {skills}.
     Provide learning roadmap for the job role with expected skillsets.
-
     Ensure your response contains is in table format.
     """
 
@@ -58,22 +75,32 @@ def generate_learning_roadmap(jobrole, skills):
         {'role':'user',
          'content': f"{delimiter}{jobrole}{delimiter}"},
     ]
+
     jobrole_and_skill_response_str = llm.get_completion_by_messages(messages)
     jobrole_and_skill_response_str = jobrole_and_skill_response_str.replace("'", "\"")
-    #jobrole_and_skill_response = json.loads(jobrole_and_skill_response_str)
     return jobrole_and_skill_response_str
     
 
-#def get_skill_details(list_of_relevant_jobrole_n_skill: list[dict]):
-def get_skill_details(jobrole):
-    skills_list = []
-    #for x in list_of_relevant_jobrole_n_skill:
-    #    skills_list.append(x.get('course_name')) # x["course_name"]
+def generate_sfc_claim_process():
+    delimiter = "####"
 
-    #list_of_course_details = []
-    #for skill_name in skills_list:
-    #    list_of_course_details.append(dict_of_courses.get(skill_name))
-    return skills_list 
+    system_message = f"""
+    Provide the SkillsFuture Singapore's process for individual to claim for SkillsFuture Credit and the amount available for individuals.
+    Use a friendly tone make sure the statements are factually accurate.
+    Your response should be comprehensive and informative to help the customers to make their decision.
+    """
+
+    messages =  [
+        {'role':'system',
+         'content': system_message},
+        {'role':'user',
+         'content': f"{delimiter}{delimiter}"},
+    ]
+
+    response_on_sfc = llm.get_completion_by_messages(messages)
+    response_on_sfc = response_on_sfc.split(delimiter)[-1]
+    return response_on_sfc
+   
 
 
 def generate_response_based_on_course_details(user_message, product_details):
@@ -98,7 +125,7 @@ def generate_response_based_on_course_details(user_message, product_details):
     Make sure the statements are factually accurate.
     Your response should be comprehensive and informative to help the \
     the customers to make their decision.
-    Provide learning roadmap for the job role with details such rating, pricing, and skills to be learnt.
+    Provide learning roadmap for the job role with details such courses, link to the courses, ratings, pricing, and skills to be learnt.
     Use Neural Linguistic Programming to construct your response.
 
     Use the following format:
@@ -121,18 +148,14 @@ def generate_response_based_on_course_details(user_message, product_details):
     return response_to_user
 
 
-def process_user_message(user_input):
+def process_user_message(resume, interest, job_role):
     delimiter = "```"
 
-    # Process 1: If Courses are found, look them up
-    df_jobrole_n_skills = identify_jobrole_and_skills(user_input)
-    print("jobrole_n_skills : ", df_jobrole_n_skills)
+    # Process 1: Identify skill gaps
+    jobrole_n_skills = identify_skillgaps_for_jobrole(resume, interest, job_role)
+    print("jobrole_n_skills : ", jobrole_n_skills)
 
-    # Process 2: Get the Course Details
-    learning_roadmap = generate_learning_roadmap(user_input, df_jobrole_n_skills['TSC_CCS Title'])
+    # Process 2: Suggest learning roadmap
+    learning_roadmap = generate_learning_roadmap(interest, job_role, jobrole_n_skills)
 
-    # Process 3: Generate Response based on Course Details
-    #reply = generate_response_based_on_course_details(user_input, skill_details)
-
-
-    return learning_roadmap, df_jobrole_n_skills
+    return learning_roadmap, jobrole_n_skills
