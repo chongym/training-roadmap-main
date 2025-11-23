@@ -16,7 +16,7 @@ st.write("**How does it work:**")
 st.write("Multi-Action Prompts: Step-by-Step Instructions in a Single Prompt")
 st.write("1. Extract the skills required of a job role based on Skill Framework (SFw) from SkillsFuture.")
 st.write("2. Based on the work experience and current skills acquired provided in resume to identify skill gaps.")     
-st.write("3. Recommend learning roadmap with courses or apprenticeships opportunities and the duration needed to acquire the new skills.\n")     
+st.write("3. Recommend learning roadmap with learning activities needed to acquire the new skills.\n")     
 
 st.divider()
 # 1. Define the custom CSS style
@@ -47,11 +47,11 @@ with st.container(border=True, width=250):
 
 with st.container(border=True, width=250):
     st.write("**Identify skill gaps**")
-    st.write("(Data: Extract skills not in profile)")
+    st.write("(Data: Skills not in profile)")
 
 with st.container(border=True, width=250):
     st.write("**Generate learning recommendation**")
-    st.write("(Data: Identify courses and training duration)")
+    st.write("(Data: Learning activities and outcomes)")
 
 st.divider()
 
